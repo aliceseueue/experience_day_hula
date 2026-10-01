@@ -1,0 +1,8 @@
+# Native ztest for the protocol parser. Runs on any board with enough RAM;
+# no GPIO hardware is required because the DSA driver is stubbed out.
+common:
+  tags:
+    - protocol
+  platform_allow:
+    - native_sim
+    - qemu_cortex_m3

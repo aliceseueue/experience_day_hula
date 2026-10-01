@@ -1,0 +1,132 @@
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/*
+ * Pin map for the rf-attenuator board (STM32C071FBP6).
+ *
+ *   PA5  DSA_CLK
+ *   PA6  DSA_LE
+ *   PA7  DSA_DATA
+ *   PA4  USB LED   (green)
+ *   PA8  Status LED (amber)
+ *   PA11 USB_DM
+ *   PA12 USB_DP
+ *   PA13 SWDIO
+ *   PA14 SWCLK
+ *
+ * PA11/PA12 are already wired to the USB peripheral by the board's
+ * zephyr_udc0 node, so no pinctrl is needed here.
+ */
+
+/ {
+	zephyr,user {
+		dsa-clk-gpios    = <&gpioa 5 GPIO_ACTIVE_HIGH>;
+		dsa-le-gpios     = <&gpioa 6 GPIO_ACTIVE_HIGH>;
+		dsa-data-gpios   = <&gpioa 7 GPIO_ACTIVE_HIGH>;
+		usb-led-gpios    = <&gpioa 4 GPIO_ACTIVE_HIGH>;
+		status-led-gpios = <&gpioa 8 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/* The class instance. CONFIG_CDC_ACM_SERIAL_INITIALIZE_AT_BOOT registers the
+ * first CDC ACM node, which must be this one. Its label must stay
+ * cdc_acm_uart0 because main.c selects the device by compatible, and the
+ * register function is hardcoded to class "cdc_acm_0". */
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "Zephyr USB CDC-ACM";
+	};
+};
+
+/* USB is the only transport, so there is no console. Dropping these saves
+ * RAM on a part with only 24 KB. usart1/usart2 pins are not wired here. */
+&usart1 {
+	status = "disabled";
+};
+
+&usart2 {
+	status = "disabled";
+};
+
+/* spi1's pinctrl claims PA5 (SCK), PA6 (MISO) and PA7 (MOSI), which are the
+ * DSA pins. Enabling it would silently reconfigure the attenuator interface. */
+&spi1 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
+/* adc1 claims PA4 via adc1_in4_pa4, which is the USB LED. */
+&adc1 {
+	status = "disabled";
+};
+
+/* Board LED1 is on PA5, which is DSA_CLK. */
+&leds {
+	status = "disabled";
+};
+
+/* Timers1 feeds the board's PWM LED and is otherwise unused. The board's
+ * pwmleds node has no label, so it can only be reached via this path, and
+ * disabling timers1 removes the pwm1 child that would drive it. */
+&timers1 {
+	status = "disabled";
+};
+
+/* No independent watchdog: a hung USB link should not reset the attenuator
+ * back to maximum attenuation mid-test. */
+&iwdg {
+	status = "disabled";
+};
+
+&rtc {
+	status = "disabled";
+};
+
+/* Die temperature and internal reference are unused. */
+&die_temp {
+	status = "disabled";
+};
+
+&vref {
+	status = "disabled";
+};
+
+&crc {
+	status = "disabled";
+};
+
+&dma1 {
+	status = "disabled";
+};
+
+&dmamux1 {
+	status = "disabled";
+};
+
+/* Flash layout. The board reserves 0x0-0x8FFF for MCUboot and starts the
+ * application at 0x9000. Nothing here runs MCUboot, so on reset the part
+ * loads its vector table from 0x08000000, finds erased flash, and faults
+ * before main() -- no USB, no debugger.
+ *
+ * Existing labeled partition nodes are referenced with '&', which overrides
+ * their properties in place. Declaring a new 'partitions { ... }' block here
+ * instead makes dtc merge it into the board's, producing duplicate labels.
+ */
+&boot_partition {
+	status = "disabled";
+};
+
+&slot0_partition {
+	reg = <0x00000000 DT_SIZE_K(120)>;
+};
+
+&slot1_partition {
+	status = "disabled";
+};
+
+&storage_partition {
+	status = "disabled";
+};
